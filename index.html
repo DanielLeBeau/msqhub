@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merchant Square - Local Information Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --brand-bg: #0b0f19;
+            --card-bg: rgba(18, 24, 38, 0.75);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
+            --brand-accent: #38bdf8;
+            --rail-gold: #fbbf24;
+            --flap-bg: #111827;
+            --flap-border: #374151;
+            --flap-text: #f9fafb;
+            --flap-amber: #fbbf24;
+            --status-green: #34d399;
+            --status-delay: #f59e0b;
+            --status-severe: #ef4444;
+            --status-blue: #60a5fa;
+            --status-purple: #c084fc;
+            --status-red: #ef4444;
+        }
+
+        body {
+            background-color: var(--brand-bg);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Solari Flap Board Styles */
+        .flap-time-box {
+            display: inline-flex;
+            gap: 0.25vw;
+            background: #000;
+            padding: 0.3vw 0.5vw;
+            border-radius: 0.4vw;
+            border: 1px solid var(--flap-border);
+        }
+
+        .flap-char-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--flap-bg);
+            color: var(--flap-text);
+            font-family: monospace;
+            font-weight: 800;
+            font-size: 1.2vw;
+            padding: 0.3vw 0.45vw;
+            border-radius: 0.2vw;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            border-bottom: 1px solid rgba(0,0,0,0.8);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+            position: relative;
+        }
+
+        .flap-char-box::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: rgba(0,0,0,0.9);
+        }
+
+        .flap-status-box {
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 1.0vw;
+            padding: 0.3vw 0.8vw;
+            border-radius: 0.3vw;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .flap-status-good { background-color: rgba(52, 211, 153, 0.15); color: var(--status-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+        .flap-status-delay { background-color: rgba(245, 158, 11, 0.15); color: var(--status-delay); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .flap-status-severe { background-color: rgba(239, 68, 68, 0.15); color: var(--status-severe); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        /* Dashboard layout containers */
+        .hub-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            padding: 1.5vh 2vw;
+            box-sizing: border-box;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1.2vh;
+            margin-bottom: 1.5vh;
+            flex-shrink: 0;
+        }
+
+        .view-panel {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            min-height: 0;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .view-panel.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2vw;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .column {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1vw;
+            padding: 1.5vh 1.5vw;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2vh;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.8vh;
+            flex-shrink: 0;
+        }
+
+        .column-title {
+            font-size: 1.25vw;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.5vw;
+        }
+
+        .update-time {
+            font-size: 0.9vw;
+            color: var(--text-sub);
+        }
+
+        .cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1vh;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        /* Weather specific styling */
+        .hero-card {
+            position: relative;
+            border-radius: 0.8vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2.5vh 2vw;
+            margin-bottom: 1.5vh;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .hero-background {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.25;
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .hero-icon { font-size: 4vw; margin-bottom: 0.5vh; }
+        .hero-temp { font-size: 3.5vw; font-weight: 800; color: var(--brand-accent); line-height: 1; }
+        .hero-condition { font-size: 1.2vw; font-weight: 600; color: var(--text-main); margin-top: 0.5vh; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1vw;
+            flex-shrink: 0;
+            margin-bottom: 1.5vh;
+        }
+
+        .stat-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 0.6vw;
+            padding: 1vh 0.8vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .stat-label { font-size: 0.8vw; color: var(--text-sub); text-transform: uppercase; margin-bottom: 0.3vh; }
+        .stat-value { font-size: 1.1vw; font-weight: 700; color: var(--rail-gold); }
+
+        .weather-hourly-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 0.6vw;
+            padding: 1vh 1vw;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* TfL Line indicator bars */
+        .line-bar { width: 0.6vw; height: 2.2vh; border-radius: 0.2vw; flex-shrink: 0; }
+        .color-bakerloo { background-color: #B36305; }
+        .color-central { background-color: #E32017; }
+        .color-circle { background-color: #FFD300; }
+        .color-district { background-color: #00782A; }
+        .color-hammersmith-city { background-color: #F3A9BB; }
+        .color-jubilee { background-color: #A0A5A9; }
+        .color-metropolitan { background-color: #9B0056; }
+        .color-northern { background-color: #000000; border: 1px solid #fff; }
+        .color-piccadilly { background-color: #0019A8; }
+        .color-victoria { background-color: #00A0E2; }
+        .color-waterloo-city { background-color: #95DBE5; }
+        .color-elizabeth { background-color: #6950A1; }
+        .color-overground { background-color: #E86A10; }
+        .color-dlr { background-color: #00AFAD; }
+        .color-tram { background-color: #84B817; }
+        .color-ifs-cloud { background-color: #E21833; }
+        .color-merchant-green { background-color: #10b981; }
+
+        .standard-row-card {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 0.6vw;
+            padding: 1vh 1vw;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .row-text-main { font-size: 1.1vw; font-weight: 700; color: var(--text-main); }
+        .row-text-sub { font-size: 0.85vw; color: var(--text-sub); }
+
+        .mode-badge {
+            font-size: 0.75vw;
+            font-weight: 700;
+            padding: 0.2vw 0.6vw;
+            border-radius: 0.3vw;
+            text-transform: uppercase;
+        }
+        .badge-blue { background-color: rgba(96, 165, 250, 0.2); color: var(--status-blue); border: 1px solid rgba(96, 165, 250, 0.4); }
+        .badge-purple { background-color: rgba(192, 132, 252, 0.2); color: var(--status-purple); border: 1px solid rgba(192, 132, 252, 0.4); }
+        .badge-bbc { background-color: #bb1919; color: #fff; }
+
+        /* News styling */
+        .news-dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 2vw;
+            flex: 1;
+            min-height: 0;
+        }
+        .news-hero-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 0.8vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+        .news-hero-image-wrapper { width: 100%; height: 35vh; overflow: hidden; flex-shrink: 0; }
+        .news-hero-image { width: 100%; height: 100%; object-fit: cover; }
+        .news-hero-content { padding: 1.5vh 1.5vw; display: flex; flex-direction: column; justify-content: space-between; flex: 1; min-height: 0; }
+        .news-hero-title { font-size: 1.4vw; font-weight: 800; color: var(--text-main); line-height: 1.2; margin-bottom: 0.8vh; }
+        .news-hero-desc { font-size: 0.95vw; color: var(--text-sub); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
+
+        .news-sub-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 0.6vw;
+            padding: 0.8vw;
+            display: flex;
+            align-items: center;
+            gap: 1vw;
+            flex: 1;
+            min-height: 0;
+        }
+        .news-sub-thumb { width: 5vw; height: 100%; max-height: 7vh; object-fit: cover; border-radius: 0.4vw; flex-shrink: 0; }
+        .news-sub-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+
+        /* Tall Screen Mode Layout Styles */
+        .tall-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+        }
+        .tall-status-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+        .tall-page {
+            display: none;
+            flex-direction: column;
+            gap: 1.2vh;
+            flex: 1;
+            min-height: 0;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+        .tall-page.active {
+            display: flex;
+            opacity: 1;
+        }
+        .tall-item-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 0.8vw;
+            padding: 1.5vh 1.5vw;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex: 1;
+            min-height: 0;
+        }
+        .tall-item-bar {
+            width: 0.8vw;
+            height: 80%;
+            border-radius: 0.3vw;
+            flex-shrink: 0;
+            margin-right: 1.5vw;
+        }
+        .tall-item-details {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex: 1;
+            min-width: 0;
+        }
+        .tall-item-main {
+            display: flex;
+            align-items: center;
+            gap: 1.5vw;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .tall-badge {
+            padding: 0.4vw 1vw;
+            border-radius: 0.4vw;
+            letter-spacing: 0.03em;
+        }
+
+        .unavailable-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: var(--text-sub);
+            font-size: 1.2vw;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(4px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .page-transition-anim {
+            animation: fadeInOut 0.5s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="hub-container">
+        <!-- Top Title & Live Clock Header -->
+        <div class="header-bar">
+            <div style="display: flex; align-items: center; gap: 1vw;">
+                <div style="background: var(--brand-accent); color: var(--brand-bg); font-weight: 800; font-size: 1.1vw; padding: 0.4vw 0.8vw; border-radius: 0.4vw;">PADDINGTON</div>
+                <h1 id="page-title" style="font-size: 1.8vw; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Merchant Square Hub</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1.5vw;">
+                <div id="live-date" style="font-size: 1.1vw; color: var(--text-sub); font-weight: 600;">--</div>
+                <div id="live-clock" style="font-size: 1.5vw; font-weight: 800; color: var(--brand-accent); font-family: monospace;">--:--:--</div>
+            </div>
+        </div>
+
+        <!-- View Panels -->
+        <div id="view-weather" class="view-panel">
+            <div id="weather-container-wrapper" style="display:flex; flex-direction:column; flex:1; min-height:0;"></div>
+        </div>
+
+        <div id="view-trains" class="view-panel">
+            <div id="trains-container-wrapper" style="display:flex; flex-direction:column; flex:1; min-height:0;"></div>
+        </div>
+
+        <div id="view-tfl" class="view-panel">
+            <div id="tfl-container-wrapper" style="display:flex; flex-direction:column; flex:1; min-height:0;"></div>
+        </div>
+
+        <div id="view-buses" class="view-panel">
+            <div id="buses-container-wrapper" style="display:flex; flex-direction:column; flex:1; min-height:0;"></div>
+        </div>
+
+        <div id="view-news" class="view-panel">
+            <div id="news-container-wrapper" style="display:flex; flex-direction:column; flex:1; min-height:0;"></div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedFontLevel = parseInt(urlParams.get('font')) || 2; 
+        
+        // Configurable Font Scale profiles for tall screen mode (?font=1 to 4)
+        const FONT_SCALES = {
+            1: { title: "2.0vw", body: "1.5vw", badge: "1.3vw", statVal: "2.4vw" },
+            2: { title: "2.8vw", body: "2.0vw", badge: "1.8vw", statVal: "3.2vw" },
+            3: { title: "3.6vw", body: "2.6vw", badge: "2.3vw", statVal: "4.0vw" },
+            4: { title: "4.4vw", body: "3.2vw", badge: "2.8vw", statVal: "4.8vw" }
+        };
+        const activeFont = FONT_SCALES[requestedFontLevel] || FONT_SCALES[2];
+
+        const PAGE_TITLES = {
+            weather: "Weather Forecast",
+            trains: "Paddington Mainline Station",
+            tfl: "TfL Tube & Rail Status",
+            buses: "Local Bus Live Arrivals",
+            news: "BBC News - UK Front Page"
+        };
+
+        const FULL_VIEWS = ["weather", "trains", "tfl", "buses", "news"];
+        const TALL_VIEWS = ["weather", "trains", "tfl", "buses", "news"];
+        
+        let autoRotateInterval = null;
+        let pageRotateInterval = null;
+        
+        let weatherDataCache = null;
+        let currentTallWeatherPage = 1;
+
+        let allTfLLines = [];
+        let currentTallTfLPage = 1;
+
+        let allTrainDepartures = [];
+        let allTrainArrivals = [];
+        let currentTallTrainPage = 1;
+
+        let allBusArrivals = [];
+        let currentTallBusPage = 1;
+
+        let allNewsItems = [];
+        let currentTallNewsPage = 1;
+
+        let lastUpdatedTimes = {
+            weather: "--:--",
+            trains: "--:--",
+            tfl: "--:--",
+            buses: "--:--",
+            news: "--:--"
+        };
+
+        function createFlapString(str, fixedLength = 0, animate = true) {
+            const cleanStr = String(str || "").toUpperCase();
+            const padded = fixedLength > 0 ? cleanStr.padEnd(fixedLength, ' ') : cleanStr;
+            let html = `<span class="flap-time-box">`;
+            for (let i = 0; i < padded.length; i++) {
+                const char = padded[i] === ' ' ? '&nbsp;' : padded[i];
+                const animClass = animate ? 'animate-flap' : '';
+                const delay = (i * 0.03).toFixed(2);
+                html += `<span class="flap-char-box ${animClass}" style="animation-delay: ${delay}s;">${char}</span>`;
+            }
+            html += `</span>`;
+            return html;
+        }
+
+        async function fetchWithCache(cacheKey, url, ttlMinutes = 5, options = {}) {
+            const cachedData = localStorage.getItem(cacheKey);
+            const cachedTime = localStorage.getItem(cacheKey + '_time');
+            const now = Date.now();
+
+            if (cachedData && cachedTime && (now - Number(cachedTime) < ttlMinutes * 60 * 1000)) {
+                try { return JSON.parse(cachedData); } catch (e) {}
+            }
+
+            try {
+                const res = await fetch(url, options);
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                const data = await res.json();
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                localStorage.setItem(cacheKey + '_time', now);
+                return data;
+            } catch (err) {
+                if (cachedData) {
+                    try { return JSON.parse(cachedData); } catch (e) {}
+                }
+                throw err;
+            }
+        }
+
+        function initViewFromURL() {
+            const requestedPage = urlParams.get('page');
+            const screenType = urlParams.get('screen');
+            const isTall = (screenType === 'tall');
+
+            const weatherWrapper = document.getElementById('weather-container-wrapper');
+            if (isTall) {
+                weatherWrapper.innerHTML = `
+                    <div class="tall-wrapper">
+                      <div class="tall-status-container">
+                        <div class="tall-page active" id="weather-tall-page-1"></div>
+                        <div class="tall-page" id="weather-tall-page-2"></div>
+                      </div>
+                    </div>`;
+            } else {
+                weatherWrapper.innerHTML = `
+                    <div class="dashboard-grid">
+                      <div class="column">
+                        <div class="column-header">
+                          <div class="column-title">Current Conditions</div>
+                          <div class="update-time" id="update-weather">Updated: --:--</div>
+                        </div>
+                        <div class="hero-card" id="hero-card">
+                          <div class="hero-background weather-clear" id="hero-bg"></div>
+                          <div class="hero-content">
+                            <div class="hero-icon" id="hero-icon">🌤️</div>
+                            <div class="hero-temp" id="hero-temp">--°C</div>
+                            <div class="hero-condition" id="hero-condition">Loading weather...</div>
+                          </div>
+                        </div>
+                        <div class="stats-grid">
+                          <div class="stat-card"><span class="stat-label">Wind</span><span class="stat-value" id="stat-wind">-- mph</span></div>
+                          <div class="stat-card"><span class="stat-label">Humidity</span><span class="stat-value" id="stat-humidity">--%</span></div>
+                          <div class="stat-card"><span class="stat-label">UV Index</span><span class="stat-value" id="stat-uv">--</span></div>
+                          <div class="stat-card"><span class="stat-label">Precipitation</span><span class="stat-value" id="stat-precip">0 mm</span></div>
+                        </div>
+                      </div>
+                      <div class="column">
+                        <div class="column-header"><div class="column-title">Today's Hourly Forecast</div></div>
+                        <div class="cards-list" id="hourly-list"></div>
+                      </div>
+                    </div>`;
+            }
+
+            const tflWrapper = document.getElementById('tfl-container-wrapper');
+            if (isTall) {
+                tflWrapper.innerHTML = `
+                    <div class="tall-wrapper">
+                      <div class="tall-status-container">
+                        <div class="tall-page active" id="tfl-tall-page-1"></div>
+                        <div class="tall-page" id="tfl-tall-page-2"></div>
+                      </div>
+                    </div>`;
+            } else {
+                tflWrapper.innerHTML = `
+                    <div class="dashboard-grid">
+                      <div class="column">
+                        <div class="column-header">
+                          <div class="column-title">Tube & Rail Lines</div>
+                          <div class="update-time" id="update-tfl">Updated: --:--</div>
+                        </div>
+                        <div class="cards-list" id="tfl-page-1"></div>
+                      </div>
+                      <div class="column">
+                        <div class="column-header"><div class="column-title">Tube & Rail Lines</div></div>
+                        <div class="cards-list" id="tfl-page-2"></div>
+                      </div>
+                    </div>`;
+            }
+
+            const trainsWrapper = document.getElementById('trains-container-wrapper');
+            if (isTall) {
+                trainsWrapper.innerHTML = `
+                    <div class="tall-wrapper">
+                      <div class="tall-status-container">
+                        <div class="tall-page active" id="trains-tall-page-1"></div>
+                        <div class="tall-page" id="trains-tall-page-2"></div>
+                      </div>
+                    </div>`;
+            } else {
+                trainsWrapper.innerHTML = `
+                    <div class="dashboard-grid">
+                      <div class="column">
+                        <div class="column-header">
+                          <div class="column-title">Paddington Departures <span class="mode-badge badge-blue">Outbound</span></div>
+                          <div class="update-time" id="update-trains">Updated: --:--</div>
+                        </div>
+                        <div class="cards-list" id="train-departures-list"></div>
+                      </div>
+                      <div class="column">
+                        <div class="column-header">
+                          <div class="column-title">Paddington Arrivals <span class="mode-badge badge-purple">Inbound</span></div>
+                        </div>
+                        <div class="cards-list" id="train-arrivals-list"></div>
+                      </div>
+                    </div>`;
+            }
+
+            const busesWrapper = document.getElementById('buses-container-wrapper');
+            if (isTall) {
+                busesWrapper.innerHTML = `
+                    <div class="tall-wrapper">
+                      <div class="tall-status-container">
+                        <div class="tall-page active" id="buses-tall-page-1"></div>
+                        <div class="tall-page" id="buses-tall-page-2"></div>
+                      </div>
+                    </div>`;
+            } else {
+                busesWrapper.innerHTML = `
+                    <div class="dashboard-grid">
+                      <div class="column">
+                        <div class="column-header">
+                          <div class="column-title">Local Bus Arrivals</div>
+                          <div class="update-time" id="update-buses">Updated: --:--</div>
+                        </div>
+                        <div class="cards-list" id="bus-page-1"></div>
+                      </div>
+                      <div class="column">
+                        <div class="column-header"><div class="column-title">Local Bus Arrivals</div></div>
+                        <div class="cards-list" id="bus-page-2"></div>
+                      </div>
+                    </div>`;
+            }
+
+            const newsWrapper = document.getElementById('news-container-wrapper');
+            if (isTall) {
+                newsWrapper.innerHTML = `
+                    <div class="tall-wrapper">
+                      <div class="tall-status-container">
+                        <div class="tall-page active" id="news-tall-page-1"></div>
+                        <div class="tall-page" id="news-tall-page-2"></div>
+                      </div>
+                    </div>`;
+            } else {
+                newsWrapper.innerHTML = `
+                    <div class="news-dashboard-grid">
+                      <div class="column" id="news-column-main" style="display: flex; flex-direction: column;">
+                        <div class="column-header">
+                          <div class="column-title"><span class="mode-badge badge-bbc">Top Story</span></div>
+                          <div class="update-time" id="update-news">Updated: --:--</div>
+                        </div>
+                        <div id="news-featured-container" style="display: flex; flex-direction: column; flex: 1; min-height: 0;"></div>
+                      </div>
+                      <div class="column" id="news-column-sub" style="display: flex; flex-direction: column;">
+                        <div class="column-header"><div class="column-title">Latest Headlines</div></div>
+                        <div class="cards-list" id="news-sub-list" style="display: flex; flex-direction: column; gap: 0.8vh; flex: 1; min-height: 0;"></div>
+                      </div>
+                    </div>`;
+            }
+
+            if (requestedPage && PAGE_TITLES[requestedPage.toLowerCase()]) {
+                const pageName = requestedPage.toLowerCase();
+                showView(pageName);
+                renderActiveView(pageName);
+
+                if (isTall && ["weather", "tfl", "trains", "buses", "news"].includes(pageName)) {
+                    if (!pageRotateInterval) {
+                        pageRotateInterval = setInterval(() => toggleTallPage(pageName), 8000);
+                    }
+                }
+                return;
+            }
+
+            let activePool = FULL_VIEWS;
+            if (screenType === 'tall') {
+                activePool = TALL_VIEWS;
+            }
+
+            startCustomRotation(activePool);
+        }
+
+        function showView(pageName) {
+            const views = document.querySelectorAll('.view-panel');
+            views.forEach(v => {
+                v.classList.remove('active');
+                v.classList.remove('page-transition-anim');
+            });
+
+            const targetView = document.getElementById(`view-${pageName}`);
+            if (targetView) {
+                targetView.classList.add('active');
+                void targetView.offsetWidth;
+                targetView.classList.add('page-transition-anim');
+                document.getElementById('page-title').textContent = PAGE_TITLES[pageName] || "Local Information Hub";
+            }
+        }
+
+        function startCustomRotation(viewList) {
+            let customIndex = 0;
+            const screenType = urlParams.get('screen');
+            const isTall = (screenType === 'tall');
+
+            const updateCurrentViewAndPages = () => {
+                const currentView = viewList[customIndex];
+                renderActiveView(currentView);
+
+                if (isTall) {
+                    currentTallWeatherPage = 1;
+                    currentTallTfLPage = 1;
+                    currentTallTrainPage = 1;
+                    currentTallBusPage = 1;
+                    currentTallNewsPage = 1;
+                    
+                    ['weather', 'tfl', 'trains', 'buses', 'news'].forEach(pv => {
+                        const p1 = document.getElementById(`${pv}-tall-page-1`);
+                        const p2 = document.getElementById(`${pv}-tall-page-2`);
+                        if (p1 && p2) {
+                            p1.classList.add('active');
+                            p2.classList.remove('active');
+                        }
+                    });
+
+                    if (pageRotateInterval) clearInterval(pageRotateInterval);
+                    pageRotateInterval = setInterval(() => {
+                        toggleTallPage(currentView);
+                    }, 8000);
+                }
+            };
+
+            updateCurrentViewAndPages();
+
+            if (!autoRotateInterval && viewList.length > 1) {
+                autoRotateInterval = setInterval(() => {
+                    customIndex = (customIndex + 1) % viewList.length;
+                    updateCurrentViewAndPages();
+                }, 16000);
+            }
+        }
+
+        function renderActiveView(pageName) {
+            showView(pageName);
+            if (pageName === 'weather') {
+                fetchWeather();
+            } else if (pageName === 'tfl') {
+                fetchTfL();
+            } else if (pageName === 'trains') {
+                fetchTrains();
+            } else if (pageName === 'buses') {
+                fetchBuses();
+            } else if (pageName === 'news') {
+                fetchNews();
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('live-date').textContent = now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function recordUpdateTime(key) {
+            const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            lastUpdatedTimes[key] = nowStr;
+            const el = document.getElementById(`update-${key}`);
+            if (el) {
+                el.textContent = `Updated: ${nowStr}`;
+            }
+        }
+
+        function getWeatherMeta(code, hour) {
+            const night = hour >= 20 || hour < 6;
+            if (code === 0) {
+                return night 
+                    ? { label: "Clear Night", icon: "🌙", bgClass: "weather-clear-night" } 
+                    : { label: "Clear Sky", icon: "☀️", bgClass: "weather-clear" };
+            }
+            if (code <= 3) {
+                return night 
+                    ? { label: "Partly Cloudy", icon: "🌙☁️", bgClass: "weather-partly-cloudy" } 
+                    : { label: "Partly Cloudy", icon: "🌤️", bgClass: "weather-partly-cloudy" };
+            }
+            if (code <= 65 || (code >= 80 && code <= 82)) {
+                return { label: "Rainy", icon: "🌧️", bgClass: "weather-rainy" };
+            }
+            return { label: "Overcast", icon: "☁️", bgClass: "weather-overcast" };
+        }
+
+        async function fetchWeather() {
+            try {
+                const url = "https://api.open-meteo.com/v1/forecast?latitude=51.518&longitude=-0.174&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=uv_index_max&wind_speed_unit=mph&timezone=Europe%2FLondon";
+                weatherDataCache = await fetchWithCache('weather_data', url, 10);
+                recordUpdateTime('weather');
+                
+                if (urlParams.get('screen') === 'tall') {
+                    renderTallWeatherPages();
+                } else {
+                    renderStandardWeatherColumns();
+                }
+            } catch (e) { console.error("Weather error", e); }
+        }
+
+        function renderTallWeatherPages() {
+            const p1 = document.getElementById('weather-tall-page-1');
+            const p2 = document.getElementById('weather-tall-page-2');
+            if (!p1 || !p2 || !weatherDataCache) return;
+
+            p1.innerHTML = '';
+            p2.innerHTML = '';
+
+            const data = weatherDataCache;
+            const curHour = new Date().getHours();
+            const meta = getWeatherMeta(data.current.weather_code, curHour);
+
+            p1.innerHTML = `
+                <div class="tall-weather-hero" style="position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.5vw; border-radius:0.8vw; border:1px solid var(--border-color); height: 50%; flex: 0 0 50%;">
+                  <div class="hero-background ${meta.bgClass}" style="position:absolute; inset:0; z-index:1;"></div>
+                  <div style="position:relative; z-index:3; display:flex; flex-direction:column; align-items:center; text-align:center;">
+                    <div style="font-size: 5vw;">${meta.icon}</div>
+                    <div style="font-size: 6.5vw; font-weight: 800; color: var(--brand-accent); line-height: 1.1; text-shadow: 0 2px 8px rgba(0,0,0,0.8);">${Math.round(data.current.temperature_2m)}°C</div>
+                    <div style="font-size: ${activeFont.title}; font-weight: 700; color: var(--text-main); margin-top: 0.5vh; text-shadow: 0 2px 6px rgba(0,0,0,0.8);">${meta.label}</div>
+                    <div style="font-size: ${activeFont.body}; color: var(--text-sub); margin-top: 0.5vh;">Updated: ${lastUpdatedTimes.weather}</div>
+                  </div>
+                </div>
+                <div class="tall-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1vw; height: calc(50% - 1.2vh); flex: 0 0 calc(50% - 1.2vh);">
+                  <div class="tall-stat-card" style="background:var(--card-bg); border:1px solid var(--border-color); padding:1.2vw; border-radius:0.6vw; display:flex; justify-content:space-between; align-items:center;"><span style="font-size: ${activeFont.body}; color: var(--text-sub); text-transform: uppercase;">Wind</span><span style="font-size: ${activeFont.statVal}; font-weight: 700; color: var(--rail-gold);">${Math.round(data.current.wind_speed_10m)} mph</span></div>
+                  <div class="tall-stat-card" style="background:var(--card-bg); border:1px solid var(--border-color); padding:1.2vw; border-radius:0.6vw; display:flex; justify-content:space-between; align-items:center;"><span style="font-size: ${activeFont.body}; color: var(--text-sub); text-transform: uppercase;">Humidity</span><span style="font-size: ${activeFont.statVal}; font-weight: 700; color: var(--rail-gold);">${data.current.relative_humidity_2m}%</span></div>
+                  <div class="tall-stat-card" style="background:var(--card-bg); border:1px solid var(--border-color); padding:1.2vw; border-radius:0.6vw; display:flex; justify-content:space-between; align-items:center;"><span style="font-size: ${activeFont.body}; color: var(--text-sub); text-transform: uppercase;">UV Index</span><span style="font-size: ${activeFont.statVal}; font-weight: 700; color: var(--rail-gold);">${data.daily.uv_index_max[0] || "--"}</span></div>
+                  <div class="tall-stat-card" style="background:var(--card-bg); border:1px solid var(--border-color); padding:1.2vw; border-radius:0.6vw; display:flex; justify-content:space-between; align-items:center;"><span style="font-size: ${activeFont.body}; color: var(--text-sub); text-transform: uppercase;">Precipitation</span><span style="font-size: ${activeFont.statVal}; font-weight: 700; color: var(--rail-gold);">${data.current.precipitation} mm</span></div>
+                </div>
+            `;
+
+            const hourlyFrag = document.createDocumentFragment();
+            for (let i = curHour; i < curHour + 14 && hourlyFrag.childNodes.length < 7; i += 2) {
+                if (data.hourly.time[i]) {
+                    const dateObj = new Date(data.hourly.time[i]);
+                    const itemMeta = getWeatherMeta(data.hourly.weather_code[i], dateObj.getHours());
+                    const card = document.createElement('div');
+                    card.className = 'tall-item-card';
+                    card.innerHTML = `
+                      <div class="tall-item-bar color-merchant-green"></div>
+                      <div class="tall-item-details">
+                        <div class="tall-item-main" style="font-size: ${activeFont.body};">
+                          <span style="background:var(--card-bg); border:1px solid var(--border-color); padding:0.2vw 0.8vw; border-radius:0.3vw; color:var(--brand-accent); font-weight: 700; font-size: ${activeFont.body};">${dateObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                          <span>${itemMeta.icon} ${itemMeta.label}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:2vw; flex-shrink:0;">
+                          <span style="color:var(--status-blue); font-size:${activeFont.body}; font-weight:700;">💧 ${data.hourly.precipitation_probability[i]}%</span>
+                          <span style="color:var(--brand-accent); font-size:${activeFont.title}; font-weight:800;">${Math.round(data.hourly.temperature_2m[i])}°C</span>
+                        </div>
+                      </div>
+                    `;
+                    hourlyFrag.appendChild(card);
+                }
+            }
+            p2.appendChild(hourlyFrag);
+        }
+
+        function renderStandardWeatherColumns() {
+            const data = weatherDataCache;
+            if (!data) return;
+            const curHour = new Date().getHours();
+            const meta = getWeatherMeta(data.current.weather_code, curHour);
+
+            const bgEl = document.getElementById('hero-bg');
+            if (bgEl) {
+                bgEl.className = `hero-background ${meta.bgClass}`;
+            }
+
+            document.getElementById('hero-icon').textContent = meta.icon;
+            document.getElementById('hero-temp').textContent = `${Math.round(data.current.temperature_2m)}°C`;
+            document.getElementById('hero-condition').textContent = meta.label;
+            document.getElementById('stat-wind').textContent = `${Math.round(data.current.wind_speed_10m)} mph`;
+            document.getElementById('stat-humidity').textContent = `${data.current.relative_humidity_2m}%`;
+            document.getElementById('stat-uv').textContent = data.daily.uv_index_max[0] || "--";
+            document.getElementById('stat-precip').textContent = `${data.current.precipitation} mm`;
+
+            const list = document.getElementById('hourly-list');
+            const fragment = document.createDocumentFragment();
+            
+            for (let i = curHour; i < curHour + 12 && fragment.childNodes.length < 6; i += 2) {
+                if (data.hourly.time[i]) {
+                    const dateObj = new Date(data.hourly.time[i]);
+                    const itemMeta = getWeatherMeta(data.hourly.weather_code[i], dateObj.getHours());
+                    const card = document.createElement('div');
+                    card.className = 'weather-hourly-card';
+                    card.innerHTML = `
+                      <div style="display: flex; align-items: center; gap: 0.8vw; overflow: hidden;">
+                        <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--brand-accent); font-weight: 700; font-size: 1.1vw; padding: 0.25vw 0.5vw; border-radius: 0.2vw;">${dateObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                        <span style="font-size: 1.1vw; font-weight: 600; color: var(--text-main);">${itemMeta.icon} ${itemMeta.label}</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 1vw; flex-shrink: 0;">
+                        <span style="font-size: 0.9vw; color: var(--status-blue)">💧 ${data.hourly.precipitation_probability[i]}%</span>
+                        <span style="font-size: 1.1vw; font-weight: 700; color: var(--brand-accent);">${Math.round(data.hourly.temperature_2m[i])}°C</span>
+                      </div>`;
+                    fragment.appendChild(card);
+                }
+            }
+            list.innerHTML = '';
+            list.appendChild(fragment);
+        }
+
+        async function fetchTrains() {
+            const getSimulatedServices = (type) => {
+                const isDept = type === 'departures';
+                const destinations = isDept ? [
+                    { name: "READING", op: "GREAT WESTERN RAILWAY", plt: "1", mins: 2 },
+                    { name: "OXFORD", op: "GREAT WESTERN RAILWAY", plt: "3", mins: 6 },
+                    { name: "BRISTOL TEMPLE MEADS", op: "GREAT WESTERN RAILWAY", plt: "4", mins: 11 },
+                    { name: "HEATHROW TERMINAL 5", op: "ELIZABETH LINE", plt: "12", mins: 3 },
+                    { name: "MAIDENHEAD", op: "ELIZABETH LINE", plt: "11", mins: 7 },
+                    { name: "CARDIFF CENTRAL", op: "GREAT WESTERN RAILWAY", plt: "5", mins: 15 },
+                    { name: "SWANSEA", op: "GREAT WESTERN RAILWAY", plt: "2", mins: 22 },
+                    { name: "WORCESTER FOREGATE ST", op: "GREAT WESTERN RAILWAY", plt: "6", mins: 28 },
+                    { name: "ABEREDW", op: "ELIZABETH LINE", plt: "14", mins: 19 },
+                    { name: "PNW / HEATHROW T2&3", op: "ELIZABETH LINE", plt: "13", mins: 12 }
+                ] : [
+                    { name: "READING", op: "GREAT WESTERN RAILWAY", plt: "7", mins: 1 },
+                    { name: "OXFORD", op: "GREAT WESTERN RAILWAY", plt: "8", mins: 5 },
+                    { name: "BRISTOL TEMPLE MEADS", op: "GREAT WESTERN RAILWAY", plt: "2", mins: 9 },
+                    { name: "HEATHROW TERMINAL 5", op: "ELIZABETH LINE", plt: "11", mins: 4 },
+                    { name: "SWINDON", op: "GREAT WESTERN RAILWAY", plt: "5", mins: 14 },
+                    { name: "NEWBURY", op: "GREAT WESTERN RAILWAY", plt: "6", mins: 20 },
+                    { name: "CARDIFF CENTRAL", op: "GREAT WESTERN RAILWAY", plt: "3", mins: 25 },
+                    { name: "DIDCOT PARKWAY", op: "GREAT WESTERN RAILWAY", plt: "4", mins: 31 }
+                ];
+
+                const now = new Date();
+                return destinations.map((item, index) => {
+                    const serviceDate = new Date(now.getTime() + (item.mins + index * 4) * 60000);
+                    const timeStr = serviceDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    let status = "ON TIME";
+                    if (index === 2) status = "DELAYED";
+                    if (index === 5) status = "ON TIME";
+
+                    return {
+                        time: timeStr,
+                        label: `${isDept ? 'TO' : 'FROM'} ${item.name}`,
+                        operator: item.op,
+                        platform: item.plt,
+                        status: status
+                    };
+                });
+            };
+
+            allTrainDepartures = getSimulatedServices('departures');
+            allTrainArrivals = getSimulatedServices('arrivals');
+            recordUpdateTime('trains');
+
+            if (urlParams.get('screen') === 'tall') {
+                renderTallTrainPages();
+            } else {
+                renderStandardTrainColumns();
+            }
+        }
+
+        function renderTallTrainPages() {
+            const p1 = document.getElementById('trains-tall-page-1');
+            const p2 = document.getElementById('trains-tall-page-2');
+            if (!p1 || !p2) return;
+
+            p1.innerHTML = '';
+            p2.innerHTML = '';
+
+            const itemsP1 = allTrainDepartures.slice(0, 7);
+            const itemsP2 = allTrainArrivals.slice(0, 7);
+
+            if (!itemsP1.length) p1.innerHTML = `<div class="unavailable-state"><h3>No Departure Data</h3></div>`;
+            if (!itemsP2.length) p2.innerHTML = `<div class="unavailable-state"><h3>No Arrival Data</h3></div>`;
+
+            itemsP1.forEach(item => p1.appendChild(createTallTrainCard(item, 'OUTBOUND')));
+            itemsP2.forEach(item => p2.appendChild(createTallTrainCard(item, 'INBOUND')));
+        }
+
+        function createTallTrainCard(item, modeLabel) {
+            let sClass = "flap-status-good";
+            const statUpper = item.status.toUpperCase();
+            if (statUpper.includes('CANCEL')) sClass = "flap-status-severe";
+            else if (statUpper !== 'ON TIME' && statUpper !== 'ARRIVED') sClass = "flap-status-delay";
+
+            const card = document.createElement('div');
+            card.className = 'tall-item-card';
+            const timeHtml = createFlapString(item.time, 5);
+
+            card.innerHTML = `
+              <div class="tall-item-bar ${modeLabel === 'OUTBOUND' ? 'badge-blue' : 'badge-purple'}"></div>
+              <div class="tall-item-details">
+                <div class="tall-item-main" style="font-size: ${activeFont.body};">
+                  <div>${timeHtml}</div>
+                  <span style="overflow:hidden; text-overflow:ellipsis; font-size: ${activeFont.body};">${item.label}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:1.2vw; flex-shrink:0;">
+                  <span style="font-size: ${activeFont.body}; font-weight: 700; text-transform: uppercase; color: ${modeLabel === 'OUTBOUND' ? 'var(--status-blue)' : 'var(--status-purple)'};">${modeLabel}</span>
+                  <span style="color:var(--flap-amber); font-size:${activeFont.body}; font-weight:700;">PLT ${item.platform}</span>
+                  <span class="tall-badge ${sClass}" style="font-size: ${activeFont.badge}; font-weight: 700;">${item.status}</span>
+                </div>
+              </div>
+            `;
+            return card;
+        }
+
+        function renderStandardTrainColumns() {
+            renderTrainList('train-departures-list', allTrainDepartures.slice(0, 7), true);
+            renderTrainList('train-arrivals-list', allTrainArrivals.slice(0, 7), true);
+        }
+
+        function renderTrainList(id, items, useFlap = true) {
+            const el = document.getElementById(id);
+            if(!el) return;
+            const fragment = document.createDocumentFragment();
+            if(!items.length) { el.innerHTML = `<div class="unavailable-state"><h3>No Live Data</h3></div>`; return; }
+            
+            items.forEach(item => {
+                let sClass = "flap-status-good";
+                const statUpper = item.status.toUpperCase();
+                if (statUpper.includes('CANCEL')) sClass = "flap-status-severe";
+                else if (statUpper !== 'ON TIME' && statUpper !== 'ARRIVED') sClass = "flap-status-delay";
+                
+                const card = document.createElement('div');
+                card.className = 'standard-row-card';
+                const timeHtml = useFlap ? createFlapString(item.time, 5) : `<span style="background:var(--card-bg); border:1px solid var(--border-color); padding:0.25vw 0.6vw; border-radius:0.3vw; color:var(--brand-accent); font-weight:700; font-size:1.1vw;">${item.time}</span>`;
+
+                card.innerHTML = `
+                  <div style="display: flex; align-items: center; gap: 1vw; overflow: hidden;">
+                    <div>${timeHtml}</div>
+                    <div style="overflow:hidden;">
+                      <div class="row-text-main">${item.label}</div>
+                      <div class="row-text-sub">${item.operator}</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 1vw; flex-shrink: 0;">
+                    <div style="color: var(--flap-amber); font-size: 1.1vw; font-weight: 700;">PLT ${item.platform}</div>
+                    <div class="flap-status-box ${sClass}">${item.status}</div>
+                  </div>`;
+                fragment.appendChild(card);
+            });
+            el.innerHTML = '';
+            el.appendChild(fragment);
+        }
+
+        async function fetchTfL() {
+            try {
+                allTfLLines = await fetchWithCache('tfl_status', "https://api.tfl.gov.uk/line/mode/tube,elizabeth-line,overground,dlr/status", 2);
+                recordUpdateTime('tfl');
+                
+                if (urlParams.get('screen') === 'tall') {
+                    renderTallTfLPages();
+                } else {
+                    renderStandardTfLColumns();
+                }
+            } catch (e) { console.error("TfL fetch error", e); }
+        }
+
+        function renderTallTfLPages() {
+            const p1 = document.getElementById('tfl-tall-page-1');
+            const p2 = document.getElementById('tfl-tall-page-2');
+            if (!p1 || !p2) return;
+
+            p1.innerHTML = '';
+            p2.innerHTML = '';
+
+            const linesP1 = allTfLLines.slice(0, 7);
+            const linesP2 = allTfLLines.slice(7, 14);
+
+            linesP1.forEach(line => p1.appendChild(createTallTfLCard(line)));
+            linesP2.forEach(line => p2.appendChild(createTallTfLCard(line)));
+        }
+
+        function renderStandardTfLColumns() {
+            const p1 = document.getElementById('tfl-page-1');
+            const p2 = document.getElementById('tfl-page-2');
+            if (!p1 || !p2) return;
+
+            p1.innerHTML = '';
+            p2.innerHTML = '';
+
+            const linesP1 = allTfLLines.slice(0, 7);
+            const linesP2 = allTfLLines.slice(7, 14);
+
+            linesP1.forEach(line => p1.appendChild(createStandardTfLCard(line)));
+            linesP2.forEach(line => p2.appendChild(createStandardTfLCard(line)));
+        }
+
+        function createTallTfLCard(line) {
+            const statusObj = line.lineStatuses[0];
+            const statusText = (statusObj ? statusObj.statusSeverityDescription : "UNKNOWN").toUpperCase();
+            
+            let statusClass = "flap-status-good";
+            if (statusText.includes("MINOR") || statusText.includes("PART")) {
+                statusClass = "flap-status-delay";
+            } else if (statusText.includes("SEVERE") || statusText.includes("SUSPENDED") || statusText.includes("CLOSURE")) {
+                statusClass = "flap-status-severe";
+            }
+
+            const card = document.createElement('div');
+            card.className = 'tall-item-card';
+            card.innerHTML = `
+              <div class="tall-item-bar color-${line.id}"></div>
+              <div class="tall-item-details">
+                <span class="tall-item-main" style="font-size: ${activeFont.body};">${line.name.toUpperCase()}</span>
+                <span class="tall-badge ${statusClass}" style="font-size: ${activeFont.badge}; font-weight: 700; background:var(--card-bg); border:1px solid var(--border-color);">${statusText}</span>
+              </div>
+            `;
+            return card;
+        }
+
+        function createStandardTfLCard(line) {
+            const statusObj = line.lineStatuses[0];
+            const text = (statusObj ? statusObj.statusSeverityDescription : "GOOD SERVICE").toUpperCase();
+            let sClass = "flap-status-good";
+            if (text.includes("MINOR") || text.includes("PART")) sClass = "flap-status-delay";
+            else if (text.includes("SEVERE") || text.includes("SUSPENDED")) sClass = "flap-status-severe";
+
+            const card = document.createElement('div');
+            card.className = 'standard-row-card';
+            card.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 0.8vw; overflow: hidden;">
+                <div class="line-bar color-${line.id}"></div>
+                <span class="row-text-main">${line.name.toUpperCase()}</span>
+              </div>
+              <div class="flap-status-box ${sClass}" style="background:var(--card-bg); border:1px solid var(--border-color);">${text}</div>`;
+            return card;
+        }
+
+        async function fetchBuses() {
+            try {
+                const routes = ["6", "16", "23", "36", "205", "n205"].join(",");
+                const data = await fetchWithCache('buses_data', `https://api.tfl.gov.uk/Line/${routes}/Arrivals`, 1);
+
+                allBusArrivals = data.filter(i => {
+                    const stop = (i.stationName || "").toLowerCase();
+                    return stop.includes("edgware road") || stop.includes("paddington") || stop.includes("st mary");
+                }).sort((a,b) => a.timeToStation - b.timeToStation);
+
+                recordUpdateTime('buses');
+
+                if (urlParams.get('screen') === 'tall') {
+                    renderTallBusPages();
+                } else {
+                    renderStandardBusColumns();
+                }
+            } catch (e) { console.error("Bus error", e); }
+        }
+
+        function renderTallBusPages() {
+            const p1 = document.getElementById('buses-tall-page-1');
+            const p2 = document.getElementById('buses-tall-page-2');
+            if (!p1 || !p2) return;
+
+            p1.innerHTML = '';
+            p2.innerHTML = '';
+
+            const itemsP1 = allBusArrivals.slice(0, 7);
+            const itemsP2 = allBusArrivals.slice(7, 14);
+
+            itemsP1.forEach(item => p1.appendChild(createTallBusCard(item)));
+            itemsP2.forEach(item => p2.appendChild(createTallBusCard(item)));
+        }
+
+        function createTallBusCard(item) {
+            const mins = Math.floor(item.timeToStation / 60);
+            const eta = mins <= 0 ? "DUE" : (mins === 1 ? "1 MIN" : `${mins} MINS`);
+            const dueTime = new Date(item.expectedArrival).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const destName = (item.destinationName || "").replace(" Bus Station", "").toUpperCase();
+            const stopName = (item.stationName || "").toUpperCase();
+
+            const card = document.createElement('div');
+            card.className = 'tall-item-card';
+            card.innerHTML = `
+              <div class="tall-item-bar" style="background-color: var(--status-red);"></div>
+              <div class="tall-item-details">
+                <div class="tall-item-main" style="flex-direction: column; align-items: flex-start; gap: 0.1vw; overflow: hidden; flex: 1; font-size: ${activeFont.body};">
+                  <div style="display: flex; align-items: center; gap: 1.2vw; width: 100%;">
+                    <span class="tall-badge" style="background-color: var(--status-red); color: #fff; font-size: ${activeFont.badge}; font-weight: 700;">${item.lineName}</span>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: ${activeFont.body};">TO ${destName}</span>
+                  </div>
+                  <div style="font-size: calc(${activeFont.body} * 0.85); color: var(--text-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 0.2vw;">STOP: ${stopName}</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:1.5vw; flex-shrink:0;">
+                  <span style="color: var(--brand-accent); font-size: ${activeFont.body}; font-weight: 700; text-transform: uppercase;">${eta}</span>
+                  <span class="tall-badge flap-status-good" style="font-size: ${activeFont.badge}; font-weight: 700; background:var(--card-bg); border:1px solid var(--border-color); color:var(--status-green);">${dueTime}</span>
+                </div>
+              </div>
+            `;
+            return card;
+        }
+
+        function renderStandardBusColumns() {
+            const p1 = document.getElementById('bus-page-1');
+            const p2 = document.getElementById('bus-page-2');
+            if(!p1 || !p2) return;
+
+            const frag1 = document.createDocumentFragment();
+            const frag2 = document.createDocumentFragment();
+            const pageItems = allBusArrivals.slice(0, 14);
+
+            pageItems.forEach((item, index) => {
+                const mins = Math.floor(item.timeToStation / 60);
+                const eta = mins <= 0 ? "DUE" : (mins === 1 ? "1 MIN" : `${mins} MINS`);
+                const dueTime = new Date(item.expectedArrival).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const destName = (item.destinationName || "").replace(" Bus Station", "").toUpperCase();
+                const stopName = (item.stationName || "").toUpperCase();
+
+                const card = document.createElement('div');
+                card.className = 'standard-row-card';
+                card.innerHTML = `
+                  <div style="display: flex; align-items: center; gap: 0.8vw; overflow: hidden;">
+                    <div style="background-color: var(--status-red); color: #fff; border: 1px solid #991b1b; padding: 0.25vw 0.5vw; border-radius: 0.2vw; font-weight: 800; font-size: 1.1vw;">${item.lineName}</div>
+                    <div style="overflow: hidden;">
+                      <div class="row-text-main">TO ${destName}</div>
+                      <div class="row-text-sub">STOP: ${stopName}</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 1vw; flex-shrink: 0;">
+                    <span style="color: var(--brand-accent); font-size: 1.15vw; font-weight: 700; text-transform: uppercase;">${eta}</span>
+                    <div class="row-text-sub" style="background:var(--card-bg); border:1px solid var(--border-color); padding:0.2vw 0.5vw; border-radius:0.3vw; color:var(--status-green);">EXP ${dueTime}</div>
+                  </div>`;
+
+                if (index < 7) frag1.appendChild(card);
+                else frag2.appendChild(card);
+            });
+
+            p1.innerHTML = ''; p1.appendChild(frag1);
+            p2.innerHTML = ''; p2.appendChild(frag2);
+        }
+
+        async function fetchNews() {
+            try {
+                const rssUrl = "http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/front_page/rss.xml";
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+                const data = await fetchWithCache('bbc_news', apiUrl, 10);
+
+                if (data && data.items) {
+                    allNewsItems = data.items;
+                } else {
+                    allNewsItems = [];
+                }
+
+                recordUpdateTime('news');
+
+                if (urlParams.get('screen') === 'tall') {
+                    renderTallNewsPages();
+                } else {
+                    renderStandardNewsColumns();
+                }
+            } catch (e) {
+                console.error("BBC News fetch error", e);
+                allNewsItems = [];
+                if (urlParams.get('screen') === 'tall') {
+                    renderTallNewsPages();
+                } else {
+                    renderStandardNewsColumns();
+                }
+            }
+        }
+
+        function extractThumbnail(item) {
+            let rawUrl = "";
+            if (item.thumbnail && item.thumbnail.length > 0) rawUrl = item.thumbnail;
+            else if (item.enclosure && item.enclosure.link) rawUrl = item.enclosure.link;
+            else if (item.content) {
+                const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
+                if (imgMatch && imgMatch[1]) rawUrl = imgMatch[1];
+            } else if (item.description) {
+                const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
+                if (imgMatch && imgMatch[1]) rawUrl = imgMatch[1];
+            }
+
+            if (!rawUrl) return "";
+
+            if (rawUrl.includes("ichef.bbci.co.uk")) {
+                rawUrl = rawUrl.replace(/\/cps\/(?:native|live)\/\d+(_[^\/]+)?\//, '/cps/live/w976$1/');
+            }
+
+            return rawUrl;
+        }
+
+        function renderTallNewsPages() {
+            const p1 = document.getElementById('news-tall-page-1');
+            const p2 = document.getElementById('news-tall-page-2');
+            if (!p1 || !p2) return;
+
+            p1.innerHTML = '';
+            p2.innerHTML = '';
+
+            const itemsP1 = allNewsItems.slice(0, 4);
+            const itemsP2 = allNewsItems.slice(4, 8);
+
+            if (!itemsP1.length) p1.innerHTML = `<div class="unavailable-state"><h3>No News Feed Available</h3></div>`;
+            if (!itemsP2.length) p2.innerHTML = `<div class="unavailable-state"><h3>No Additional News Stories</h3></div>`;
+
+            itemsP1.forEach(item => p1.appendChild(createTallNewsCard(item)));
+            itemsP2.forEach(item => p2.appendChild(createTallNewsCard(item)));
+        }
+
+        function createTallNewsCard(item) {
+            const pubDateObj = item.pubDate ? new Date(item.pubDate) : null;
+            const pubTime = pubDateObj ? pubDateObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
+            const pubDateStr = pubDateObj ? pubDateObj.toLocaleDateString([], {day:'2-digit', month:'short'}) : "";
+            const thumb = extractThumbnail(item);
+            const card = document.createElement('div');
+            card.className = 'tall-item-card';
+            card.innerHTML = `
+              <div class="tall-item-bar color-merchant-green"></div>
+              ${thumb ? `<div style="width: 20%; height: 100%; flex-shrink: 0; margin-right: 3vw; overflow: hidden;"><img src="${thumb}" alt="" style="width: 100%; height: 100%; object-fit: cover;"></div>` : ''}
+              <div class="tall-item-details" style="padding-left: 0.5vw;">
+                <div class="tall-item-main" style="flex-direction: column; align-items: flex-start; gap: 0.1vw; overflow: hidden; flex: 1;">
+                  <div style="display: flex; align-items: center; gap: 1.2vw; width: 100%;">
+                    <span class="tall-badge badge-bbc" style="font-size: ${activeFont.badge}; padding: 0.3vw 1vw; font-weight: 700;">BBC</span>
+                    <span style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: normal; font-size: ${activeFont.body}; line-height: 1.25;">${item.title}</span>
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction: column; align-items:flex-end; gap:0.2vw; flex-shrink:0; padding-left: 3vw;">
+                  <span style="font-size: ${activeFont.body}; font-weight: 700; color: var(--brand-accent);">${pubDateStr}</span>
+                  <span style="font-size: ${activeFont.body}; color: var(--brand-accent);">${pubTime}</span>
+                </div>
+              </div>
+            `;
+            return card;
+        }
+
+        function renderStandardNewsColumns() {
+            const featuredContainer = document.getElementById('news-featured-container');
+            const subListContainer = document.getElementById('news-sub-list');
+            if (!featuredContainer || !subListContainer) return;
+
+            if (!allNewsItems.length) {
+                featuredContainer.innerHTML = `<div class="unavailable-state"><h3>No News Feed Available</h3></div>`;
+                subListContainer.innerHTML = `<div class="unavailable-state"><h3>No Additional Stories</h3></div>`;
+                return;
+            }
+
+            const topItem = allNewsItems[0];
+            const topThumb = extractThumbnail(topItem);
+            const topDateObj = topItem.pubDate ? new Date(topItem.pubDate) : null;
+            const topTime = topDateObj ? topDateObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
+            const topDateStr = topDateObj ? topDateObj.toLocaleDateString([], {day:'2-digit', month:'short', year:'numeric'}) : "";
+
+            featuredContainer.innerHTML = `
+              <div class="news-hero-card">
+                <div class="news-hero-image-wrapper">
+                  ${topThumb ? `<img src="${topThumb}" class="news-hero-image" alt="Top story thumbnail">` : ''}
+                </div>
+                <div class="news-hero-content">
+                  <div>
+                    <div class="news-hero-title">${topItem.title}</div>
+                    <div class="news-hero-desc">${topItem.description ? topItem.description.replace(/<[^>]*>?/gm, '') : ''}</div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.4vw;">
+                    <span class="mode-badge badge-bbc">BBC UK</span>
+                    <span style="font-size: 1.15vw; color: var(--brand-accent); font-weight: 700;">${topDateStr} - ${topTime}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            const subItems = allNewsItems.slice(1, 5);
+            const subFragment = document.createDocumentFragment();
+
+            subItems.forEach(item => {
+                const thumb = extractThumbnail(item);
+                const subDateObj = item.pubDate ? new Date(item.pubDate) : null;
+                const pubTime = subDateObj ? subDateObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "";
+                const pubDateStr = subDateObj ? subDateObj.toLocaleDateString([], {day:'2-digit', month:'short'}) : "";
+
+                const card = document.createElement('div');
+                card.className = 'news-sub-card';
+                card.innerHTML = `
+                  ${thumb ? `<img src="${thumb}" class="news-sub-thumb" alt="Thumbnail">` : `<div class="news-sub-thumb" style="display:flex; align-items:center; justify-content:center; color:var(--text-sub); font-size:0.6vw;">BBC</div>`}
+                  <div class="news-sub-info">
+                    <div class="row-text-main" style="font-size: 1.15vw; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; line-height: 1.25;">${item.title}</div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0.1vw; padding-left: 0.5vw;">
+                    <span style="font-size: 1.0vw; font-weight: 700; color: var(--brand-accent);">${pubDateStr}</span>
+                    <span style="font-size: 1.0vw; color: var(--brand-accent);">${pubTime}</span>
+                  </div>
+                `;
+                subFragment.appendChild(card);
+            });
+
+            subListContainer.innerHTML = '';
+            subListContainer.appendChild(subFragment);
+        }
+
+        function toggleTallPage(pageName) {
+            const p1 = document.getElementById(`${pageName}-tall-page-1`);
+            const p2 = document.getElementById(`${pageName}-tall-page-2`);
+            if (!p1 || !p2) return;
+
+            let currentPageVar = 1;
+            if (pageName === 'weather') currentPageVar = currentTallWeatherPage;
+            else if (pageName === 'tfl') currentPageVar = currentTallTfLPage;
+            else if (pageName === 'trains') currentPageVar = currentTallTrainPage;
+            else if (pageName === 'buses') currentPageVar = currentTallBusPage;
+            else if (pageName === 'news') currentPageVar = currentTallNewsPage;
+
+            if (currentPageVar === 1) {
+                p1.classList.remove('active');
+                p2.classList.add('active');
+                if (pageName === 'weather') currentTallWeatherPage = 2;
+                else if (pageName === 'tfl') currentTallTfLPage = 2;
+                else if (pageName === 'trains') currentTallTrainPage = 2;
+                else if (pageName === 'buses') currentTallBusPage = 2;
+                else if (pageName === 'news') currentTallNewsPage = 2;
+            } else {
+                p2.classList.remove('active');
+                p1.classList.add('active');
+                if (pageName === 'weather') currentTallWeatherPage = 1;
+                else if (pageName === 'tfl') currentTallTfLPage = 1;
+                else if (pageName === 'trains') currentTallTrainPage = 1;
+                else if (pageName === 'buses') currentTallBusPage = 1;
+                else if (pageName === 'news') currentTallNewsPage = 1;
+            }
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        initViewFromURL();
+
+        fetchWeather();
+        fetchTrains();
+        fetchTfL();
+        fetchBuses();
+        fetchNews();
+
+        setInterval(fetchWeather, 600000); 
+        setInterval(fetchTrains, 30000);   
+        setInterval(fetchTfL, 120000);     
+        setInterval(fetchBuses, 30000);    
+        setInterval(fetchNews, 300000);    
+    </script>
+</body>
+</html>
